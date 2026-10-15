@@ -1,0 +1,7 @@
+--target=~/.config
+--ignore=.gitignore
+--ignore=.stowrc
+--ignore=.zcompdump
+--ignore=.zprofile
+--ignore=.zsh_sessions/
+--ignore=.DS_Store
