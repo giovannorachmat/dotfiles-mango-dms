@@ -3,7 +3,7 @@
 #
 # Usage:
 #   screen-record monitor - record the active monitor (the one with the pointer)
-#   screen-record region  - drag-select a region with slop, then record it
+#   screen-record region  - drag-select a region with slurp, then record it
 #
 # Output: ~/Videos/recording/<YYYY-MM-DD>_<HHMMSS>_record.mp4
 # mp4 + H.264 (gpu-screen-recorder default) plays in essentially every
@@ -44,13 +44,12 @@ if pgrep -f '^gpu-screen-recorder' >/dev/null; then
   exit 0
 fi
 
-region_args=()
 if [[ $ACTION == region ]]; then
-  # slurp's default output is exactly the WxH+X+Y geometry that
-  # gpu-screen-recorder's -region wants; non-zero exit means Escape-cancel.
-  target=region
-  geom=$(slurp -b 4 -c 1,0.15,0.15,1) || exit 0 # red-ish frame; slurp's default is barely visible
-  region_args=(-region "$geom")
+  # -f keeps slurp's old X,Y WxH default out of the picture: output WxH+X+Y,
+  # fed straight to -w (modern form of -region); non-zero exit = Escape-cancel.
+  # -b is BACKGROUND color (not weight!): bad colors silently fall back to
+  # opaque white, hence the explicit 20%-alpha bg, red border, 4px border (-w).
+  target=$(slurp -f '%wx%h+%x+%y' -w 4 -c '#ff2626' -b '#ffffff33') || exit 0
 else
   # Record the monitor holding the pointer, same detection as screenshot.sh.
   target=$(mmsg get cursorpos | jq -r '.monitor // empty')
@@ -60,6 +59,7 @@ fi
 mkdir -p "$RECORD_DIR"
 output="$RECORD_DIR/$(date +%Y-%m-%d_%H%M%S)_record.mp4"
 
-nohup gpu-screen-recorder -w "$target" ${region_args[@]+"${region_args[@]}"} \
+nohup gpu-screen-recorder -w "$target" \
+  -f 60 -encoder gpu -exclude-metadata yes -tune quality \
   -c mp4 -o "$output" >/dev/null 2>&1 &
 notify "Recording" "$output - press again to stop"
